@@ -65,6 +65,14 @@ class CPU:
 
         print()
 
+    def ram_read(self, address):
+        """accept the address to read and return the value stored there"""
+        return self.ram[address]
+
+    def ram_write(self, value, address):
+        """accept a value to write, and the address to write it to"""
+        self.ram[address] = value
+
     def run(self):
         """Run the CPU."""
 
@@ -126,12 +134,8 @@ class CPU:
 
             elif ir == HLT:
                 running = False
+            
+            else:
+                print("Invalid Instruction. Exiting LS8.")
+                break
 
-
-    def ram_read(self, address):
-        """accept the address to read and return the value stored there"""
-        return self.ram[address]
-
-    def ram_write(self, value, address):
-        """accept a value to write, and the address to write it to"""
-        self.ram[address] = value
