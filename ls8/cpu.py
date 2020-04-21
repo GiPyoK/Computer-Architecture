@@ -112,23 +112,28 @@ class CPU:
         while running:
             # store instruction in ram to 'Instruction Register'
             ir = self.ram_read(self.pc)
+            inst_len = (ir >> 6) + 0b1
 
             if ir == LDI:
                 reg_num = self.ram_read(self.pc+1)
                 value = self.ram_read(self.pc+2)
                 self.reg[reg_num] = value
-                self.pc += 3
 
-            # Print
-            elif ir == PRN:
+            elif ir == PRN: # Print
                 reg_num = self.ram_read(self.pc+1)
                 print(self.reg[reg_num])
-                self.pc += 2
 
-            elif ir == HLT:
+            elif ir == MUL: # Multiply
+                reg_a = self.ram_read(self.pc+1)
+                reg_b = self.ram_read(self.pc+2)
+                self.reg[reg_a] *= self.reg[reg_b]
+
+            elif ir == HLT: # Halt
                 running = False
             
             else:
                 print("Invalid Instruction. Exiting LS8.")
                 break
+                
+            self.pc += inst_len
 
