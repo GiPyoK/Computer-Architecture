@@ -5,16 +5,10 @@
 import sys
 from cpu import *
 
-program = []
-file_name = sys.argv[-1]
-with open(file_name) as f:
-    for line in f:
-        line = line.split('#')
-        line = line[0].strip()
-        if line == '':
-            continue
-        program.append(int(line, 2))
-print(program)
+if len(sys.argv) < 2:
+    print("Please enter the file name.")
+    sys.exit()
+
 cpu = CPU()
-cpu.load(program)
+cpu.load(sys.argv[1])
 cpu.run()

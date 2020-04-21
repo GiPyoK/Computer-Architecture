@@ -14,16 +14,19 @@ class CPU:
         self.reg[7] = 0xF4 # default value
 
 
-    def load(self, program):
+    def load(self, file_name):
         """Load a program into memory."""
-        if program is None or len(program) == 0:
-            return
-
         address = 0
+        with open(file_name) as f:
+            for line in f:
+                line = line.split('#')
+                line = line[0].strip()
 
-        for instruction in program:
-            self.ram[address] = instruction
-            address += 1
+                if line == '':
+                    continue
+
+                self.ram[address] = (int(line, 2))
+                address += 1
 
 
     def alu(self, op, reg_a, reg_b):
