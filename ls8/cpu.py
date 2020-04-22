@@ -1,6 +1,47 @@
 """CPU functionality."""
 
 import sys
+# Instructions
+## ALU ops
+ADD  = 0b10100000
+SUB  = 0b10100001
+MUL  = 0b10100010
+DIV  = 0b10100011
+MOD  = 0b10100100
+INC  = 0b01100101
+DEC  = 0b01100110
+CMP  = 0b10100111
+AND  = 0b10101000
+NOT  = 0b01101001
+OR   = 0b10101010
+XOR  = 0b10101011
+SHL  = 0b10101100
+SHR  = 0b10101101
+## PC mutators
+CALL = 0b01010000
+RET  = 0b00010001     
+INT  = 0b01010010
+IRET = 0b00010011
+JMP  = 0b01010100
+JEQ  = 0b01010101
+JNE  = 0b01010110
+JGT  = 0b01010111
+JLT  = 0b01011000
+JLE  = 0b01011001
+JGE  = 0b01011010
+## Other
+NOP  = 0b00000000 
+LDI  = 0b10000010
+LD   = 0b10000011
+ST   = 0b10000100
+PUSH = 0b01000101 
+POP  = 0b01000110 
+PRN  = 0b01000111 
+PRA  = 0b01001000
+
+ALU = [ADD, MUL]
+PC_M = [CALL]
+OTHER = [LDI, PUSH, POP, PRN]
 
 class CPU:
     """Main CPU class."""
@@ -16,47 +57,13 @@ class CPU:
         self.set_ops()
 
     def set_ops(self):
-        # Instructions
-        ## ALU ops
-        ADD  = 0b10100000
-        SUB  = 0b10100001
-        MUL  = 0b10100010
-        DIV  = 0b10100011
-        MOD  = 0b10100100
-        INC  = 0b01100101
-        DEC  = 0b01100110
-        CMP  = 0b10100111
-        AND  = 0b10101000
-        NOT  = 0b01101001
-        OR   = 0b10101010
-        XOR  = 0b10101011
-        SHL  = 0b10101100
-        SHR  = 0b10101101
-        ## PC mutators
-        CALL = 0b01010000
-        RET  = 0b00010001     
-        INT  = 0b01010010
-        IRET = 0b00010011
-        JMP  = 0b01010100
-        JEQ  = 0b01010101
-        JNE  = 0b01010110
-        JGT  = 0b01010111
-        JLT  = 0b01011000
-        JLE  = 0b01011001
-        JGE  = 0b01011010
-        ## Other
-        NOP  = 0b00000000 
-        LDI  = 0b10000010
-        LD   = 0b10000011
-        ST   = 0b10000100
-        PUSH = 0b01000101 
-        POP  = 0b01000110 
-        PRN  = 0b01000111 
-        PRA  = 0b01001000
 
         self.ops[LDI] = self.ldi
         self.ops[PRN] = self.prn
-        self.ops[MUL] = self.mul
+        self.ops[MUL] = "MUL"
+        self.ops[PUSH] = self.push
+        self.ops[POP] = self.pop
+        self.ops[CALL] = self.call
 
 
     def load(self, file_name):
@@ -79,7 +86,8 @@ class CPU:
 
         if op == "ADD":
             self.reg[reg_a] += self.reg[reg_b]
-        #elif op == "SUB": etc
+        elif op == "MUL":
+            self.reg[reg_a] *= self.reg[reg_b]
         else:
             raise Exception("Unsupported ALU operation")
 
@@ -92,10 +100,24 @@ class CPU:
         reg_num = self.ram_read(self.pc + 1)
         print(self.reg[reg_num])
 
-    def mul(self):
-        reg_a = self.ram_read(self.pc + 1)
-        reg_b = self.ram_read(self.pc + 2)
-        self.reg[reg_a] *= self.reg[reg_b]
+    def call(self):
+       self.push() 
+
+    def push(self):
+        """Copy the value in the given register to the address pointed to by SP"""
+        if self.reg[7] > 0:
+            self.reg[7] -= 1
+            reg_num = self.ram_read(self.pc + 1)
+            value = self.reg[reg_num]
+            self.ram_write(self.reg[7], value)
+    
+    def pop(self):
+        """Copy the value from the address pointed to by SP to the given register"""
+        if self.reg[7] < 0xF4:
+            value = self.ram_read(self.reg[7])
+            reg_num = self.ram_read(self.pc + 1)
+            self.reg[reg_num] = value
+            self.reg[7] += 1
 
     def trace(self):
         """
@@ -121,7 +143,7 @@ class CPU:
         """accept the address to read and return the value stored there"""
         return self.ram[address]
 
-    def ram_write(self, value, address):
+    def ram_write(self, address, value):
         """accept a value to write, and the address to write it to"""
         self.ram[address] = value
 
@@ -133,8 +155,17 @@ class CPU:
             # store instruction in ram to 'Instruction Register'
             ir = self.ram_read(self.pc)
             inst_len = (ir >> 6) + 0b1
+            x = None
+            y = None
 
-            if ir in self.ops:
+            if inst_len > 1:
+                x = self.ram_read(self.pc + 1)
+            if inst_len > 2:
+                y = self.ram_read(self.pc + 2)
+
+            if ir in ALU:
+                self.alu(self.ops[ir], x, y)
+            elif ir in self.ops:
                 self.ops[ir]()
             elif ir == HLT:
                 running = False
