@@ -39,10 +39,6 @@ POP  = 0b01000110
 PRN  = 0b01000111 
 PRA  = 0b01001000
 
-ALU = [ADD, MUL]
-PC_M = [CALL]
-OTHER = [LDI, PUSH, POP, PRN]
-
 class CPU:
     """Main CPU class."""
 
@@ -61,9 +57,11 @@ class CPU:
         self.ops[LDI] = self.ldi
         self.ops[PRN] = self.prn
         self.ops[MUL] = "MUL"
+        self.ops[ADD] = "ADD"
         self.ops[PUSH] = self.push
         self.ops[POP] = self.pop
         self.ops[CALL] = self.call
+        self.ops[RET] = self.ret
 
 
     def load(self, file_name):
@@ -91,31 +89,45 @@ class CPU:
         else:
             raise Exception("Unsupported ALU operation")
 
-    def ldi(self):
-        reg_num = self.ram_read(self.pc + 1)
-        value = self.ram_read(self.pc + 2)
+    def ldi(self, reg_num, value):
         self.reg[reg_num] = value
 
-    def prn(self):
-        reg_num = self.ram_read(self.pc + 1)
+    def prn(self, reg_num, y):
         print(self.reg[reg_num])
 
-    def call(self):
-       self.push() 
+    def call(self, reg_num):
+        # Get next instruction after CALL
+        next_inst_pointer = self.pc + 2
+        # Push the next instruction to stack
+        self.push(None, next_inst_pointer)
+        # Set PC to register value
+        self.pc = self.reg[reg_num]
 
-    def push(self):
+    def ret(self, x):
+        # Save reg_0 value
+        reg_0 = self.reg[0]
+        # Store popped item to reg_0
+        self.pop(0, None)
+        # Set PC to value of reg_0
+        self.pc = self.reg[0]
+        # Restore reg_0 value
+        self.ldi(0, reg_0)
+
+    def push(self, reg_num, inst):
         """Copy the value in the given register to the address pointed to by SP"""
         if self.reg[7] > 0:
             self.reg[7] -= 1
-            reg_num = self.ram_read(self.pc + 1)
-            value = self.reg[reg_num]
-            self.ram_write(self.reg[7], value)
+            if reg_num and not inst:
+                value = self.reg[reg_num]
+                self.ram_write(self.reg[7], value)
+            else:
+                self.ram_write(self.reg[7], inst)
+                
     
-    def pop(self):
+    def pop(self, reg_num, y):
         """Copy the value from the address pointed to by SP to the given register"""
         if self.reg[7] < 0xF4:
             value = self.ram_read(self.reg[7])
-            reg_num = self.ram_read(self.pc + 1)
             self.reg[reg_num] = value
             self.reg[7] += 1
 
@@ -155,6 +167,9 @@ class CPU:
             # store instruction in ram to 'Instruction Register'
             ir = self.ram_read(self.pc)
             inst_len = (ir >> 6) + 0b1
+            is_ALU = (ir & 0b00100000) >> 5
+            is_PC_mutator = (ir & 0b00010000) >> 4
+
             x = None
             y = None
 
@@ -163,15 +178,18 @@ class CPU:
             if inst_len > 2:
                 y = self.ram_read(self.pc + 2)
 
-            if ir in ALU:
+            if is_ALU:
                 self.alu(self.ops[ir], x, y)
+                self.pc += inst_len
+            elif is_PC_mutator:
+                self.ops[ir](x)
             elif ir in self.ops:
-                self.ops[ir]()
+                self.ops[ir](x, y)
+                self.pc += inst_len
             elif ir == HLT:
                 running = False
             else:
                 print("Invalid Instruction. Exiting LS8.")
                 break
                 
-            self.pc += inst_len
 
