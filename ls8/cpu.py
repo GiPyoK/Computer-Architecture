@@ -62,6 +62,7 @@ class CPU:
         self.ops[POP] = self.pop
         self.ops[CALL] = self.call
         self.ops[RET] = self.ret
+        self.ops[ST] = self.st
 
 
     def load(self, file_name):
@@ -112,6 +113,12 @@ class CPU:
         self.pc = self.reg[0]
         # Restore reg_0 value
         self.ldi(0, reg_0)
+    
+    def st(self, reg_b, reg_a):
+        """Store value in registerB in the address stored in registerA"""
+        value = self.reg[reg_b]
+        address = self.reg[reg_a]
+        self.ram_write(address,value)
 
     def push(self, reg_num, inst):
         """Copy the value in the given register to the address pointed to by SP"""
